@@ -88,47 +88,20 @@ def call_eclim(cmdline):
 
 
 def get_context(filename):
-    project_path = find_project_dir(filename)
-    if not project_path:
+    project = call_eclim(['-command', 'project_by_resource', '-f', filename])
+    if not project:
         return None, None
 
-    project_path = os.path.abspath(project_path)
-    cmd = '-command project_list'
-    out = call_eclim(cmd)
-    if not out:
+    relative = call_eclim(['-command', 'project_link_resource', '-f', filename])
+    if not relative:
         return None, None
 
     try:
-        obj = json.loads(out)
-        for item in obj:
-            path = os.path.abspath(item['path'])
-            if path == project_path:
-                relative = os.path.relpath(filename, project_path)
-                return item['name'], relative
+        return json.loads(project), json.loads(relative)
     except ValueError:
         subclim_logging.show_error_msg("Could not parse Eclim's response. "
                                        "Are you running Eclim version 1.7.3 or greater?")
     return None, None
-
-
-def find_project_dir(file_dir):
-    ''' tries to find a '.project' file as created by Eclipse to mark
-    project folders by traversing the directory tree upward from the given
-    directory'''
-    def traverse_upward(look_for, start_at="."):
-        p = os.path.abspath(start_at)
-
-        while True:
-            if look_for in os.listdir(p):
-                return p
-            new_p = os.path.abspath(os.path.join(p, ".."))
-            if new_p == p:
-                return None
-            p = new_p
-
-    if os.path.isfile(file_dir):
-        file_dir = os.path.dirname(file_dir)
-    return traverse_upward(".project", start_at=file_dir)
 
 
 def update_java_src(project, filename):
